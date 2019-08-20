@@ -360,37 +360,6 @@ Add_pf_with_domin(){
         fi
     done
 }
-Add_pf(){
-	while true
-	do
-		list_port "ADD"
-		Set_port
-		check_port "${bk_port}"
-		[[ $? == 0 ]] && echo -e "${Error} 该本地监听端口已使用 [${bk_port}] !" && exit 1
-		Set_IP_pf
-		Set_port_pf
-		Set_pf_Enabled
-		echo "${bk_port} ${bk_ip_pf} ${bk_port_pf} ${bk_Enabled}" >> ${brook_conf}
-		Add_success=$(cat ${brook_conf}| grep ${bk_port})
-		if [[ -z "${Add_success}" ]]; then
-			echo -e "${Error} 端口转发 添加失败 ${Green_font_prefix}[端口: ${bk_port} 被转发IP和端口: ${bk_ip_pf}:${bk_port_pf}]${Font_color_suffix} "
-			break
-		else
-			Add_iptables
-			Save_iptables
-			echo -e "${Info} 端口转发 添加成功 ${Green_font_prefix}[端口: ${bk_port} 被转发IP和端口: ${bk_ip_pf}:${bk_port_pf}]${Font_color_suffix}\n"
-			read -e -p "是否继续 添加端口转发配置？[Y/n]:" addyn
-			[[ -z ${addyn} ]] && addyn="y"
-			if [[ ${addyn} == [Nn] ]]; then
-				Restart_brook
-				break
-			else
-				echo -e "${Info} 继续 添加端口转发配置..."
-				user_list_all=""
-			fi
-		fi
-	done
-}
 Del_pf(){
 	while true
 	do
