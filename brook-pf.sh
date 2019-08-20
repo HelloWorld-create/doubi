@@ -98,41 +98,6 @@ check_ver_comparison(){
 		echo -e "${Info} 当前 Brook 已是最新版本 [ ${brook_new_ver} ]" && exit 1
 	fi
 }
-check_domain_ip_change(){
-    Modify_success="0"
-    user_all=$(cat ${brook_conf}|sed '/^\s*$/d')
-    user_num=$(echo -e "${user_all}"|wc -l)
-    for((integer = 1; integer <= ${user_num}; integer++))
-    do
-        user_port=$(echo "${user_all}"|sed -n "${integer}p"|awk '{print $1}')
-        user_ip_pf=$(echo "${user_all}"|sed -n "${integer}p"|awk '{print $2}')
-        user_port_pf=$(echo "${user_all}"|sed -n "${integer}p"|awk '{print $3}')
-        user_Enabled_pf=$(echo "${user_all}"|sed -n "${integer}p"|awk '{print $4}')
-        user_domain_pf=$(echo "${user_all}"|sed -n "${integer}p"|awk '{print $5}')
-        if [ ! -z "$user_domain_pf" ]; then
-            ip=`dig +short ${user_domain_pf} | grep -Eo '[0-9\.]{7,15}' | head -1`
-            if [ -n "$ip" ]; then
-                echo -e "Check domain IP: $ip"
-            else
-                echo -e "${Error} [$(date "+%Y-%m-%d %H:%M:%S %u %Z")] Could not resolve hostname [${user_domain_pf}] !" | tee -a ${brook_log}
-                continue
-            fi
-
-            if [[ ${user_ip_pf} != ${ip} ]]; then
-                echo -e "${user_domain_pf}的IP发生变化, ${user_ip_pf} ===> ${ip}"
-                echo -e "${Info} [$(date "+%Y-%m-%d %H:%M:%S %u %Z")] ${user_domain_pf}的IP发生变化, ${user_ip_pf} ===> ${ip}" | tee -a ${brook_log}
-                sed -i -e "s/${user_port} ${user_ip_pf} ${user_port_pf} ${user_Enabled_pf} ${user_domain_pf}/${user_port} ${ip} ${user_port_pf} ${user_Enabled_pf} ${user_domain_pf}/g" ${brook_conf}
-                Modify_success="1"
-            else
-                echo -e "${Info} [$(date "+%Y-%m-%d %H:%M:%S %u %Z")] ${user_domain_pf} 的IP未发生变化: ${ip}" | tee -a ${brook_log}
-            fi
-        fi
-    done
-    if [[ ${Modify_success} = "1" ]]; then
-        echo -e "有IP发生了变化，正在重启Brook"
-        Restart_brook
-    fi
-}
 Download_brook(){
 	[[ ! -e ${file} ]] && mkdir ${file}
 	cd ${file}
@@ -328,37 +293,36 @@ list_port(){
 		echo -e "========================\n"
 	fi
 }
-Add_pf_with_domin(){
-    while true
-    do
-        list_port "ADD"
-        Set_port
-        check_port "${bk_port}"
-        [[ $? == 0 ]] && echo -e "${Error} 该本地监听端口已使用 [${bk_port}] !" && exit 1
-        Set_DOMAIN_pf
-        Set_port_pf
-        Set_pf_Enabled
-        Resolve_Hostname_To_IP
-        echo "${bk_port} ${ip} ${bk_port_pf} ${bk_Enabled} ${bk_domain_pf}" >> ${brook_conf}
-        Add_success=$(cat ${brook_conf}| grep ${bk_port})
-        if [[ -z "${Add_success}" ]]; then
-            echo -e "${Error} 端口转发 添加失败 ${Green_font_prefix}[端口: ${bk_port} 被转发域名和端口: ${ip}:${bk_port_pf}]${Font_color_suffix} "
-            break
-        else
-            Add_iptables
-            Save_iptables
-            echo -e "${Info} 端口转发 添加成功 ${Green_font_prefix}[端口: ${bk_port} 被转发域名和端口: ${ip}:${bk_port_pf}]${Font_color_suffix}\n"
-            read -e -p "是否继续 添加端口转发配置？[Y/n]:" addyn
-            [[ -z ${addyn} ]] && addyn="y"
-            if [[ ${addyn} == [Nn] ]]; then
-                Restart_brook
-                break
-            else
-                echo -e "${Info} 继续 添加端口转发配置..."
-                user_list_all=""
-            fi
-        fi
-    done
+Add_pf(){
+	while true
+	do
+		list_port "ADD"
+		Set_port
+		check_port "${bk_port}"
+		[[ $? == 0 ]] && echo -e "${Error} 该本地监听端口已使用 [${bk_port}] !" && exit 1
+		Set_IP_pf
+		Set_port_pf
+		Set_pf_Enabled
+		echo "${bk_port} ${bk_ip_pf} ${bk_port_pf} ${bk_Enabled}" >> ${brook_conf}
+		Add_success=$(cat ${brook_conf}| grep ${bk_port})
+		if [[ -z "${Add_success}" ]]; then
+			echo -e "${Error} 端口转发 添加失败 ${Green_font_prefix}[端口: ${bk_port} 被转发IP和端口: ${bk_ip_pf}:${bk_port_pf}]${Font_color_suffix} "
+			break
+		else
+			Add_iptables
+			Save_iptables
+			echo -e "${Info} 端口转发 添加成功 ${Green_font_prefix}[端口: ${bk_port} 被转发IP和端口: ${bk_ip_pf}:${bk_port_pf}]${Font_color_suffix}\n"
+			read -e -p "是否继续 添加端口转发配置？[Y/n]:" addyn
+			[[ -z ${addyn} ]] && addyn="y"
+			if [[ ${addyn} == [Nn] ]]; then
+				Restart_brook
+				break
+			else
+				echo -e "${Info} 继续 添加端口转发配置..."
+				user_list_all=""
+			fi
+		fi
+	done
 }
 Del_pf(){
 	while true
